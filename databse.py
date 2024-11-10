@@ -13,9 +13,12 @@ d = cursor.fetchall()
 # print (d)
 # print (type (d))
 # print (len(d))
+cd = 0
 lt = list()
 if len(d) == 0 :
     print("store database has no table")
+    x = input("please insert the table name: ")
+    cd = 1
     
 if len(d) != 0 :
     for row in d:
@@ -25,6 +28,35 @@ if len(d) != 0 :
     print ("The store databse table name(s) are as follow: " ,"\n",' ,'.join(lt))
 
 x = input("please insert the table name: ")
+x.replace(" ", "")
+while x.isalpha() != True:
+    x = input("please insert valid table name: ")
+x.lower
+# if x.isalpha() == True:
+#     x = x.lower
+# else: 
+#     x = input("please insert the table name: ")
+
+if cd == 1:
+    ed = 1
+else:
+    ed = 0
+    
+while ed == 0:
+    if x in lt:
+        x = input("table name exists, please insert new table name: ")
+        x.replace(" ", "")
+        while x.isalpha() != True:
+            x = input("please insert valid table name: ")
+        x = x.lower
+
+    else: 
+        query = ("CREATE TABLE store.%s ()ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;" % (x))
+        cursor.execute(query)
+        cnx.commit()
+        print ("new table inserted to database")
+        ed = 1
+
 
 
 cnx.close()
