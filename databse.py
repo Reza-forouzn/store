@@ -58,6 +58,8 @@ try:
         if x in tables:
             print(f"Table '{x}' already exists in the database. Please choose a different name.")
             retry_counter += 1
+            remaining_retries = max_retries - retry_counter
+            print(f"You have {remaining_retries} {'try' if remaining_retries == 1 else 'tries'} left.")
             if retry_counter >= max_retries:
                 print("Maximum retry attempts reached. Exiting.")
                 raise Exception("Too many retries.")
