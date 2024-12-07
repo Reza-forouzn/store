@@ -17,7 +17,7 @@ cd = 0
 lt = list()
 if len(d) == 0 :
     print("store database has no table")
-    x = input("please insert the table name: ")
+    # x = input("please insert the table name: ")
     cd = 1
     
 if len(d) != 0 :
@@ -38,6 +38,10 @@ x.lower
 #     x = input("please insert the table name: ")
 
 if cd == 1:
+    query = ("CREATE TABLE store.%s ()ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;" % (x))
+    cursor.execute(query)
+    cnx.commit()
+    print ("new table inserted to database")
     ed = 1
 else:
     ed = 0
