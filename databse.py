@@ -61,7 +61,7 @@ try:
                 exp_date DATE NOT NULL,
                 owner VARCHAR(255) NOT NULL,
                 watchers VARCHAR(1000),
-                commen VARCHAR(1000)
+                comment VARCHAR(1000)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """
             cursor.execute(query)
@@ -109,7 +109,7 @@ try:
 
             # Insert into the table
             insert_query = f"""
-            INSERT INTO store.{table_name} (name, exp_date, owner, watchers, commen)
+            INSERT INTO store.{table_name} (name, exp_date, owner, watchers, comment)
             VALUES (%s, %s, %s, %s, %s);
             """
             cursor.execute(insert_query, (name, exp_date, owner, ", ".join(watcher_list), comment))
