@@ -73,6 +73,7 @@ try:
             id INT PRIMARY KEY AUTO_INCREMENT,            -- Unique identifier for each row
             name VARCHAR(255) NOT NULL,                   -- Name column
             insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Automatically set to the current date/time on insert
+            dom TIMESTAMP DEFAULT CURRENT_TIMESTAMP,      -- New column for current date
             exp_date DATE NOT NULL,                       -- Expected date column
             owner VARCHAR(255) NOT NULL,                  -- Owner email address
             watchers VARCHAR(1000),                       -- Comma-separated list of email addresses
@@ -81,7 +82,7 @@ try:
         """
         cursor.execute(query)
         cnx.commit()
-        print(f"New table '{x}' has been created in the database.")
+        print(f"New table '{x}' has been created in the database with an additional column 'dom'.")
 
     # Optionally, insert data into the table
     if retry_counter < max_retries:
