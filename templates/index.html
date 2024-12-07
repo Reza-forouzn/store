@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <h1>Store Management</h1>
+    
+    <h2>Add a Row</h2>
+    <form id="addRowForm">
+        <label for="table_name">Table Name:</label><br>
+        <input type="text" id="table_name" name="table_name"><br><br>
+        
+        <label for="name">Item Name:</label><br>
+        <input type="text" id="name" name="name"><br><br>
+        
+        <label for="exp_date">Expiration Date:</label><br>
+        <input type="date" id="exp_date" name="exp_date"><br><br>
+        
+        <label for="owner">Owner Email:</label><br>
+        <input type="email" id="owner" name="owner"><br><br>
+        
+        <label for="watchers">Watchers (comma separated):</label><br>
+        <input type="text" id="watchers" name="watchers"><br><br>
+        
+        <label for="comment">Comment:</label><br>
+        <textarea id="comment" name="comment"></textarea><br><br>
+        
+        <button type="submit">Add Row</button>
+    </form>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

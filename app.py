@@ -1,14 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import mysql.connector
 from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import re
+import ldap
 
 app = Flask(__name__)
 
-# MySQL configuration
+# MySQL Configuration
 DB_CONFIG = {
     'user': 'store',
     'password': 'store',
@@ -18,16 +19,24 @@ DB_CONFIG = {
     'charset': 'utf8mb4',
 }
 
+# LDAP Configuration
+LDAP_SERVER = "ldap://your-ldap-server.com"
+LDAP_BASE_DN = "dc=example,dc=com"
+LDAP_USER_DN = "cn=admin,dc=example,dc=com"
+LDAP_PASSWORD = "your-ldap-admin-password"
+
 # Email Configuration
 SMTP_SERVER = 'mail.mail'
 SMTP_PORT = 587
 SENDER_EMAIL = 'address@address'
 SENDER_PASSWORD = 'pass'
 
-# Helper functions
+
+# Helper Functions
 def is_valid_email(email):
     email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(email_regex, email) is not None
+
 
 def is_valid_date(date_text):
     try:
@@ -35,6 +44,7 @@ def is_valid_date(date_text):
         return True
     except ValueError:
         return False
+
 
 def send_email(subject, body, receiver_email):
     try:
@@ -53,24 +63,43 @@ def send_email(subject, body, receiver_email):
         print(f"Error sending email: {e}")
         return False
 
+
+def authenticate_ldap(user_email):
+    try:
+        connection = ldap.initialize(LDAP_SERVER)
+        connection.simple_bind_s(LDAP_USER_DN, LDAP_PASSWORD)
+
+        search_filter = f"(mail={user_email})"
+        result = connection.search_s(LDAP_BASE_DN, ldap.SCOPE_SUBTREE, search_filter)
+        return bool(result)
+    except ldap.LDAPError as e:
+        print(f"LDAP Error: {e}")
+        return False
+    finally:
+        connection.unbind_s()
+
+
 # Routes
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
 @app.route('/create_table', methods=['POST'])
 def create_table():
     try:
-        table_name = request.json.get('table_name').strip().lower()
+        table_name = request.json.get('table_name', '').strip().lower()
         if not table_name.isalpha():
             return jsonify({"error": "Invalid table name"}), 400
-        
+
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor()
 
-        # Check if table already exists
         query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'store';"
         cursor.execute(query)
         if table_name in [row[0] for row in cursor.fetchall()]:
             return jsonify({"error": f"Table {table_name} already exists"}), 400
 
-        # Create table
         cursor.execute(f"""
         CREATE TABLE store.{table_name} (
             id INT PRIMARY KEY AUTO_INCREMENT,
@@ -91,17 +120,20 @@ def create_table():
         cursor.close()
         connection.close()
 
+
 @app.route('/add_row', methods=['POST'])
 def add_row():
     try:
         data = request.json
-        table_name = data['table_name']
-        name = data['name']
-        exp_date = data['exp_date']
-        owner = data['owner']
+        table_name = data.get('table_name', '')
+        name = data.get('name', '')
+        exp_date = data.get('exp_date', '')
+        owner = data.get('owner', '')
         watchers = data.get('watchers', [])
         comment = data.get('comment', '')
 
+        if not table_name.isalpha():
+            return jsonify({"error": "Invalid table name"}), 400
         if not is_valid_date(exp_date):
             return jsonify({"error": "Invalid date format"}), 400
         if not is_valid_email(owner):
@@ -110,9 +142,11 @@ def add_row():
             if not is_valid_email(watcher):
                 return jsonify({"error": f"Invalid watcher email: {watcher}"}), 400
 
+        if not authenticate_ldap(owner):
+            return jsonify({"error": "Owner email not found in LDAP"}), 403
+
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor()
-
         cursor.execute(f"""
         INSERT INTO store.{table_name} (name, exp_date, owner, watchers, comment)
         VALUES (%s, %s, %s, %s, %s);
@@ -124,6 +158,7 @@ def add_row():
     finally:
         cursor.close()
         connection.close()
+
 
 @app.route('/notify', methods=['GET'])
 def notify():
@@ -143,7 +178,7 @@ def notify():
             rows = cursor.fetchall()
             for row in rows:
                 name, exp_date, owner, watchers = row
-                remaining_days = (exp_date - current_date).days
+                remaining_days = (exp_date - current_date.date()).days
                 emails = [owner] + (watchers.split(", ") if watchers else [])
                 emails = [email for email in emails if is_valid_email(email)]
 
@@ -153,13 +188,14 @@ def notify():
                     for email in set(emails):
                         send_email(subject, body, email)
                         notifications.append({"name": name, "email": email})
-        
+
         return jsonify(notifications), 200
     except mysql.connector.Error as e:
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         connection.close()
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
