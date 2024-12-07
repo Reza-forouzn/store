@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+    <h2>Welcome {{ user }}</h2>
+    <a href="/logout">Logout</a>
+    <h3>Add Table</h3>
+    <form id="addTableForm">
+        <input type="text" name="table_name" placeholder="Table Name" required>
+        <button type="submit">Create Table</button>
+    </form>
+    <script>
+        document.getElementById('addTableForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const response = await fetch('/add_table', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            alert(result.message || result.error);
+        };
+    </script>
+</body>
+</html>
