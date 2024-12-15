@@ -13,7 +13,7 @@ def get_db_connection():
     return mysql.connector.connect(
         user="store",
         password="store",
-        host="127.0.0.1",
+        host="192.168.5.38",
         database="store",
         collation="utf8mb4_unicode_ci",
         charset="utf8mb4",
@@ -157,4 +157,4 @@ def modify():
     return render_template('modify.html', success=True)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True,host='0.0.0.0')
