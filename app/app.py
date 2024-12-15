@@ -33,8 +33,8 @@ def is_valid_date(date_text):
 def send_email(subject, body, receiver_emails):
     port = 587
     smtp_server = "mail."
-    sender_email = "address@address"
-    password = "pass"
+    sender_email = "devops-monitoring@kian.digital"
+    password = "4St4GkqctQw9CnL2wa66"
 
     try:
         msg = MIMEMultipart()
