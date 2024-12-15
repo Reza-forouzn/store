@@ -30,7 +30,7 @@ def is_valid_date(date_text):
     except ValueError:
         return False
 
-def send_email(subject, body, receiver_email):
+def send_email(subject, body, receiver_emails):
     port = 587
     smtp_server = "mail."
     sender_email = "address@address"
@@ -39,17 +39,18 @@ def send_email(subject, body, receiver_email):
     try:
         msg = MIMEMultipart()
         msg["From"] = sender_email
-        msg["To"] = receiver_email
         msg["Subject"] = subject
         msg.attach(MIMEText(body, "plain"))
 
         with smtplib.SMTP(smtp_server, port) as server:
             server.starttls()
             server.login(sender_email, password)
-            server.sendmail(sender_email, receiver_email, msg.as_string())
-        print(f"Email sent to {receiver_email}")
+            for email in receiver_emails:
+                msg["To"] = email
+                server.sendmail(sender_email, email, msg.as_string())
+                print(f"Email sent to {email}")
     except Exception as e:
-        print(f"Failed to send email to {receiver_email}: {e}")
+        print(f"Failed to send email: {e}")
 
 @app.route('/')
 def dashboard():
@@ -85,6 +86,13 @@ def manage():
                 comment VARCHAR(1000)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"""
             cursor.execute(query)
+            connection.commit()
+
+            send_email(
+                "New Table Created",
+                f"A new table '{table_name}' has been created.",
+                ["admin@example.com"]  # Replace with your admin email list
+            )
         elif action == 'add_row':
             name = request.form['name']
             exp_date = request.form['exp_date']
@@ -105,8 +113,13 @@ def manage():
 
             query = f"INSERT INTO {table_name} (name, exp_date, owner, watchers, comment) VALUES (%s, %s, %s, %s, %s)"
             cursor.execute(query, (name, exp_date, owner, ", ".join(watcher_list), comment))
+            connection.commit()
 
-        connection.commit()
+            send_email(
+                "New Row Added",
+                f"A new row '{name}' has been added to table '{table_name}'.",
+                [owner] + watcher_list
+            )
 
     cursor.execute("SHOW TABLES")
     tables = cursor.fetchall()
@@ -133,6 +146,8 @@ def modify():
             connection.close()
             return "Row not found.", 404
 
+        old_owner, old_watchers = row[4], row[5].split(", ") if row[5] else []
+
         cursor.execute(f"SHOW COLUMNS FROM {table_name}")
         columns = [col[0] for col in cursor.fetchall()]
 
@@ -153,8 +168,19 @@ def modify():
             cursor.execute(query, tuple(params))
             connection.commit()
 
+            new_owner = request.form.get('new_owner', old_owner)
+            new_watchers = request.form.get('new_watchers', ', '.join(old_watchers)).split(", ")
+
+            all_emails = set([old_owner] + old_watchers + [new_owner] + new_watchers)
+            send_email(
+                "Row Updated",
+                f"The row '{row_name}' in table '{table_name}' has been updated.",
+                all_emails
+            )
+
     connection.close()
     return render_template('modify.html', success=True)
 
 if __name__ == '__main__':
-    app.run(debug=True,host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0')
+
