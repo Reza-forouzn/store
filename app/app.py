@@ -117,7 +117,7 @@ def manage():
 
             send_email(
                 "New Row Added",
-                f"A new row '{name}' has been added to table '{table_name}'.",
+                f"A new row '{name}' has been added to table '{table_name}'.\nDetails:\n  - Expiration Date: {exp_date}\n  - Owner: {owner}\n  - Watchers: {', '.join(watcher_list)}\n  - Comment: {comment}",
                 [owner] + watcher_list
             )
 
@@ -153,13 +153,15 @@ def modify():
 
         updates = []
         params = []
+        changes = []
 
         for column in columns:
             if column not in ('id', 'insert_date', 'dom', 'name'):
                 new_value = request.form.get(f'new_{column}')
-                if new_value:
+                if new_value and str(row[columns.index(column)]) != new_value:
                     updates.append(f"{column} = %s")
                     params.append(new_value)
+                    changes.append(f"  - {column}: '{row[columns.index(column)]}' -> '{new_value}'")
 
         if updates:
             updates.append("dom = CURRENT_TIMESTAMP")
@@ -174,7 +176,7 @@ def modify():
             all_emails = set([old_owner] + old_watchers + [new_owner] + new_watchers)
             send_email(
                 "Row Updated",
-                f"The row '{row_name}' in table '{table_name}' has been updated.",
+                f"The row '{row_name}' in table '{table_name}' has been updated.\nChanges:\n" + "\n".join(changes),
                 all_emails
             )
 
