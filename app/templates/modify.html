@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Modify Database</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <h1>Modify Data</h1>
+    <form method="POST">
+        <label for="table_name">Table Name:</label>
+        <input type="text" id="table_name" name="table_name" required>
+        <br>
+        <label for="row_name">Row Name:</label>
+        <input type="text" id="row_name" name="row_name" required>
+        <br>
+        <div id="editable-fields">
+            <!-- Editable fields dynamically rendered -->
+        </div>
+        <button type="submit">Update</button>
+    </form>
+</body>
+<script>
+    const tableSchema = ["owner", "watchers", "exp_date", "comment"]; // Define editable fields
+    const fieldContainer = document.getElementById('editable-fields');
+
+    tableSchema.forEach(field => {
+        const label = document.createElement('label');
+        label.textContent = `New ${field.charAt(0).toUpperCase() + field.slice(1)}:`;
+        const input = document.createElement('input');
+        input.type = field === 'exp_date' ? 'date' : 'text';
+        input.name = `new_${field}`;
+        label.htmlFor = `new_${field}`;
+        fieldContainer.appendChild(label);
+        fieldContainer.appendChild(input);
+        fieldContainer.appendChild(document.createElement('br'));
+    });
+</script>
+</html>
