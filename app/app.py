@@ -137,17 +137,42 @@ def modify():
             connection.close()
             return "Row not found.", 404
 
-        owner = row[4]  # Assuming 'owner' is in the 5th column
-        if user_email != owner:
-            connection.close()
-            return "You do not have permission to modify this row.", 403
+        old_owner, old_watchers = row[4], row[5].split(", ") if row[5] else []
 
+        cursor.execute(f"SHOW COLUMNS FROM {table_name}")
+        columns = [col[0] for col in cursor.fetchall()]
 
-        connection.close()
-        return render_template('modify.html', success=True)
+        updates = []
+        params = []
+        changes = []
+
+        for column in columns:
+            if column not in ('id', 'insert_date', 'dom', 'name'):
+                new_value = request.form.get(f'new_{column}')
+                if new_value and str(row[columns.index(column)]) != new_value:
+                    updates.append(f"{column} = %s")
+                    params.append(new_value)
+                    changes.append(f"  - {column}: '{row[columns.index(column)]}' -> '{new_value}'")
+
+        if updates:
+            updates.append("dom = CURRENT_TIMESTAMP")
+            query = f"UPDATE {table_name} SET {', '.join(updates)} WHERE name = %s"
+            params.append(row_name)
+            cursor.execute(query, tuple(params))
+            connection.commit()
+
+            new_owner = request.form.get('new_owner', old_owner)
+            new_watchers = request.form.get('new_watchers', ', '.join(old_watchers)).split(", ")
+
+            all_emails = set([old_owner] + old_watchers + [new_owner] + new_watchers)
+            send_email(
+                "Row Updated",
+                f"The row '{row_name}' in table '{table_name}' has been updated.\nChanges:\n" + "\n".join(changes),
+                all_emails
+            )
 
     connection.close()
-    return render_template('modify.html')
+    return render_template('modify.html', success=True)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
