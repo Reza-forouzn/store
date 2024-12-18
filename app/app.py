@@ -9,21 +9,21 @@ from ldap3 import Server, Connection, ALL
 import os
 
 app = Flask(__name__)
-app.secret_key = "a5b1c4d08b473c495c0f3d5f9f6ed291d8b4913f04ad7643915391f236b7b98f"
+app.secret_key = os.environ.get('SECRET_KEY', 'a_default_fallback_key')
 
 # LDAP Server settings
-LDAP_SERVER = 'ldap://ldap.com'
-LDAP_BASE_DN = 'dc=example,dc=com'
+LDAP_SERVER = os.environ.get('LDAP_SERVER', 'ldap://your-ldap-server')
+LDAP_BASE_DN = os.environ.get('LDAP_BASE_DN', 'dc=example,dc=com')
 
 # Database connection settings
 def get_db_connection():
     return mysql.connector.connect(
-        user="store",
-        password="store",
-        host="192.168.5.38",
-        database="store",
-        collation="utf8mb4_unicode_ci",
-        charset="utf8mb4",
+        user=os.environ.get('DB_USER', 'store'),
+        password=os.environ.get('DB_PASSWORD', 'store'),
+        host=os.environ.get('DB_HOST', '127.0.0.1'),
+        database=os.environ.get('DB_NAME', 'store'),
+        collation=os.environ.get('DB_COLLATION', 'utf8mb4_unicode_ci'),
+        charset=os.environ.get('DB_CHARSET', 'utf8mb4'),
     )
 
 def is_valid_email(email):
@@ -31,10 +31,10 @@ def is_valid_email(email):
     return re.match(email_regex, email) is not None
 
 def send_email(subject, body, receiver_emails):
-    port = 587
-    smtp_server = "mail"
-    sender_email = "email"
-    password = "pass"
+    port = int(os.environ.get('SMTP_PORT', 587))
+    smtp_server = os.environ.get('SMTP_SERVER', 'mail')
+    sender_email = os.environ.get('SMTP_EMAIL', 'email')
+    password = os.environ.get('SMTP_PASSWORD', 'pass')
 
     try:
         msg = MIMEMultipart()
@@ -55,10 +55,13 @@ def send_email(subject, body, receiver_emails):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
+        username = request.form['username']  # Get username without domain
         password = request.form['password']
 
+        # Authenticate user with LDAP
         server = Server(LDAP_SERVER, get_info=ALL)
+        user_dn = f"uid={username},{LDAP_BASE_DN}"
+
         try:
             # Step 1: Anonymous bind to search for DN
             conn = Connection(server)
@@ -139,8 +142,6 @@ def modify():
             connection.close()
             return "You do not have permission to modify this row.", 403
 
-        # Perform updates (code remains as it is in the previous implementation)
-        # ...
 
         connection.close()
         return render_template('modify.html', success=True)

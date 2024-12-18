@@ -8,25 +8,34 @@
     <h1>Manage Database</h1>
     <form method="POST">
         <label for="table_name">Table Name:</label>
-        <input type="text" id="table_name" name="table_name" required>
+        <input type="text" id="table_name" name="table_name" class="form-input" required>
         <br>
         <label for="name">Name:</label>
-        <input type="text" id="name" name="name" required>
+        <input type="text" id="name" name="name" class="form-input" required>
         <br>
         <label for="exp_date">Expiration Date:</label>
-        <input type="date" id="exp_date" name="exp_date" required>
+        <input type="date" id="exp_date" name="exp_date" class="form-input" required>
         <br>
         <label for="owner">Owner Email:</label>
-        <input type="email" id="owner" name="owner" required>
+        <input type="email" id="owner" name="owner" class="form-input" required>
         <br>
         <label for="watchers">Watchers:</label>
-        <input type="text" id="watchers" name="watchers">
+        <input type="text" id="watchers" name="watchers" class="form-input">
         <br>
         <label for="comment">Comment:</label>
-        <input type="text" id="comment" name="comment">
+        <input type="text" id="comment" name="comment" class="form-input">
         <br>
-        <button name="action" value="create">Create Table</button>
-        <button name="action" value="add_row">Add Row</button>
+        <div class="button-container">
+            <button name="action" value="create" class="action-btn">Create Table</button>
+            <button name="action" value="add_row" class="action-btn">Add Row</button>
+        </div>
     </form>
+
+    <!-- Back to Dashboard Button -->
+    <div class="redirect-buttons">
+        <form action="/" method="GET">
+            <button type="submit" class="redirect-btn">Back to Dashboard</button>
+        </form>
+    </div>
 </body>
 </html>
