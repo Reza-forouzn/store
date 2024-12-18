@@ -8,16 +8,23 @@
     <h1>Modify Data</h1>
     <form method="POST">
         <label for="table_name">Table Name:</label>
-        <input type="text" id="table_name" name="table_name" required>
+        <input type="text" id="table_name" name="table_name" class="form-input" required>
         <br>
         <label for="row_name">Row Name:</label>
-        <input type="text" id="row_name" name="row_name" required>
+        <input type="text" id="row_name" name="row_name" class="form-input" required>
         <br>
         <div id="editable-fields">
             <!-- Editable fields dynamically rendered -->
         </div>
-        <button type="submit">Update</button>
+        <button type="submit" class="action-btn">Update</button>
     </form>
+
+    <!-- Back to Dashboard Button -->
+    <div class="redirect-buttons">
+        <form action="/" method="GET">
+            <button type="submit" class="redirect-btn">Back to Dashboard</button>
+        </form>
+    </div>
 </body>
 <script>
     const tableSchema = ["owner", "watchers", "exp_date", "comment"]; // Define editable fields
@@ -29,6 +36,7 @@
         const input = document.createElement('input');
         input.type = field === 'exp_date' ? 'date' : 'text';
         input.name = `new_${field}`;
+        input.className = 'form-input'; // Apply consistent styling
         label.htmlFor = `new_${field}`;
         fieldContainer.appendChild(label);
         fieldContainer.appendChild(input);

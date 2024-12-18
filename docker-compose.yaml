@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      # Flask Secret Key
+      SECRET_KEY: "your_super_secret_key"
+
+      # LDAP Configuration
+      LDAP_SERVER: "ldap://your-ldap-server"
+      LDAP_BASE_DN: "dc=example,dc=com"
+
+      # Database Configuration
+      DB_USER: "store"
+      DB_PASSWORD: "store"
+      DB_HOST: "127.0.0.1"
+      DB_NAME: "store"
+      DB_COLLATION: "utf8mb4_unicode_ci"
+      DB_CHARSET: "utf8mb4"
+
+      # SMTP Configuration
+      SMTP_SERVER: "smtp.example.com"
+      SMTP_PORT: 587
+      SMTP_EMAIL: "your-email@example.com"
+      SMTP_PASSWORD: "your-email-password"
+
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: python app.py

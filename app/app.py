@@ -1,40 +1,40 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session
 import mysql.connector
 import re
 from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from ldap3 import Server, Connection, ALL
+import os
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'a_default_fallback_key')
+
+# LDAP Server settings
+LDAP_SERVER = os.environ.get('LDAP_SERVER', 'ldap://your-ldap-server')
+LDAP_BASE_DN = os.environ.get('LDAP_BASE_DN', 'dc=example,dc=com')
 
 # Database connection settings
 def get_db_connection():
     return mysql.connector.connect(
-        user="store",
-        password="store",
-        host="192.168.5.38",
-        database="store",
-        collation="utf8mb4_unicode_ci",
-        charset="utf8mb4",
+        user=os.environ.get('DB_USER', 'store'),
+        password=os.environ.get('DB_PASSWORD', 'store'),
+        host=os.environ.get('DB_HOST', '127.0.0.1'),
+        database=os.environ.get('DB_NAME', 'store'),
+        collation=os.environ.get('DB_COLLATION', 'utf8mb4_unicode_ci'),
+        charset=os.environ.get('DB_CHARSET', 'utf8mb4'),
     )
 
 def is_valid_email(email):
     email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(email_regex, email) is not None
 
-def is_valid_date(date_text):
-    try:
-        datetime.strptime(date_text, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
-
 def send_email(subject, body, receiver_emails):
-    port = 587
-    smtp_server = "mail.example.com"
-    sender_email = "address@exaample.com
-    password = "password"
+    port = int(os.environ.get('SMTP_PORT', 587))
+    smtp_server = os.environ.get('SMTP_SERVER', 'mail')
+    sender_email = os.environ.get('SMTP_EMAIL', 'email')
+    password = os.environ.get('SMTP_PASSWORD', 'pass')
 
     try:
         msg = MIMEMultipart()
@@ -52,8 +52,55 @@ def send_email(subject, body, receiver_emails):
     except Exception as e:
         print(f"Failed to send email: {e}")
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']  # Get username without domain
+        password = request.form['password']
+
+        # Authenticate user with LDAP
+        server = Server(LDAP_SERVER, get_info=ALL)
+        user_dn = f"uid={username},{LDAP_BASE_DN}"
+
+        try:
+            # Step 1: Anonymous bind to search for DN
+            conn = Connection(server)
+            if not conn.bind():
+                return "Anonymous bind failed.", 500
+
+            search_base = LDAP_BASE_DN
+            search_filter = f"(uid={username})"  # Adjust attribute (e.g., sAMAccountName)
+            conn.search(search_base, search_filter)
+            if not conn.entries:
+                return "User not found.", 404
+
+            # Extract DN
+            user_dn = conn.entries[0].entry_dn
+            conn.unbind()
+
+            # Step 2: Bind with user's DN and password
+            user_conn = Connection(server, user=user_dn, password=password)
+            if user_conn.bind():
+                session['user_email'] = f"{username}@example.com"
+                return redirect(url_for('dashboard'))
+            else:
+                return render_template('login.html', error="Invalid LDAP credentials")
+        except Exception as e:
+            return render_template('login.html', error=f"LDAP authentication failed: {e}")
+
+    # If GET request, show the login form
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
 @app.route('/')
 def dashboard():
+    if 'user_email' not in session:
+        return redirect(url_for('login'))
+
     connection = get_db_connection()
     cursor = connection.cursor()
     cursor.execute("SHOW TABLES")
@@ -65,69 +112,12 @@ def dashboard():
     connection.close()
     return render_template('dashboard.html', tables=data)
 
-@app.route('/manage', methods=['GET', 'POST'])
-def manage():
-    connection = get_db_connection()
-    cursor = connection.cursor()
-
-    if request.method == 'POST':
-        table_name = request.form['table_name']
-        action = request.form['action']
-
-        if action == 'create':
-            query = f"""CREATE TABLE {table_name} (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                name VARCHAR(255) NOT NULL,
-                insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                dom TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                exp_date DATE NOT NULL,
-                owner VARCHAR(255) NOT NULL,
-                watchers VARCHAR(1000),
-                comment VARCHAR(1000)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"""
-            cursor.execute(query)
-            connection.commit()
-
-            send_email(
-                "New Table Created",
-                f"A new table '{table_name}' has been created.",
-                ["admin@example.com"]  # Replace with your admin email list
-            )
-        elif action == 'add_row':
-            name = request.form['name']
-            exp_date = request.form['exp_date']
-            owner = request.form['owner']
-            watchers = request.form['watchers']
-            comment = request.form['comment']
-
-            if not is_valid_date(exp_date):
-                return "Invalid expiration date format.", 400
-
-            if not is_valid_email(owner):
-                return "Invalid owner email format.", 400
-
-            watcher_list = [email.strip() for email in watchers.split(",")]
-            for watcher in watcher_list:
-                if not is_valid_email(watcher):
-                    return f"Invalid watcher email: {watcher}", 400
-
-            query = f"INSERT INTO {table_name} (name, exp_date, owner, watchers, comment) VALUES (%s, %s, %s, %s, %s)"
-            cursor.execute(query, (name, exp_date, owner, ", ".join(watcher_list), comment))
-            connection.commit()
-
-            send_email(
-                "New Row Added",
-                f"A new row '{name}' has been added to table '{table_name}'.\nDetails:\n  - Expiration Date: {exp_date}\n  - Owner: {owner}\n  - Watchers: {', '.join(watcher_list)}\n  - Comment: {comment}",
-                [owner] + watcher_list
-            )
-
-    cursor.execute("SHOW TABLES")
-    tables = cursor.fetchall()
-    connection.close()
-    return render_template('manage.html', tables=[t[0] for t in tables])
-
 @app.route('/modify', methods=['GET', 'POST'])
 def modify():
+    if 'user_email' not in session:
+        return redirect(url_for('login'))
+
+    user_email = session['user_email']  # Get authenticated user's email
     connection = get_db_connection()
     cursor = connection.cursor()
 
@@ -139,6 +129,7 @@ def modify():
             connection.close()
             return "Table name and row name are required.", 400
 
+        # Check ownership
         query = f"SELECT * FROM {table_name} WHERE name = %s"
         cursor.execute(query, (row_name,))
         row = cursor.fetchone()

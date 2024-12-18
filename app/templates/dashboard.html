@@ -6,10 +6,10 @@
 </head>
 <body>
     <h1>Database Dashboard</h1>
-    {% for table, rows in tables.items() %}
-        <h2>Table: {{ table }}</h2>
-        {% if rows %}
-            <table>
+    {% if tables %}
+        {% for table_name, rows in tables.items() %}
+            <h2>Table: {{ table_name }}</h2>
+            <table border="1">
                 <tr>
                     {% for column in rows[0] %}
                         <th>{{ column }}</th>
@@ -23,9 +23,16 @@
                     </tr>
                 {% endfor %}
             </table>
-        {% else %}
-            <p>No data available in this table.</p>
-        {% endif %}
-    {% endfor %}
+        {% endfor %}
+    {% else %}
+        <p>No data available.</p>
+    {% endif %}
+    
+    <!-- Redirect Button -->
+    <div class="redirect-buttons">
+        <form action="/modify" method="GET">
+            <button type="submit" class="redirect-btn">Go to Modify Page</button>
+        </form>
+    </div>
 </body>
 </html>
