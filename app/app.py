@@ -108,10 +108,20 @@ def dashboard():
     cursor = connection.cursor()
     cursor.execute("SHOW TABLES")
     tables = cursor.fetchall()
+
     data = {}
     for (table_name,) in tables:
+        # Fetch column names
+        cursor.execute(f"SHOW COLUMNS FROM {table_name}")
+        columns = [col[0] for col in cursor.fetchall()]
+
+        # Fetch table rows
         cursor.execute(f"SELECT * FROM {table_name}")
-        data[table_name] = cursor.fetchall()
+        rows = cursor.fetchall()
+
+        # Store both column names and rows
+        data[table_name] = {"columns": columns, "rows": rows}
+
     connection.close()
     return render_template('dashboard.html', tables=data, admin_emails=admin_emails)
 

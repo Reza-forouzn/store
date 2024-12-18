@@ -6,15 +6,15 @@
 
 {% block content %}
     {% if tables %}
-        {% for table_name, rows in tables.items() %}
+        {% for table_name, table_data in tables.items() %}
             <h2>Table: {{ table_name }}</h2>
             <table border="1">
                 <tr>
-                    {% for column in rows[0] %}
-                        <th>{{ column }}</th>
+                    {% for column in table_data.columns %}
+                        <th>{{ column if column != 'dom' else 'modification_date' }}</th>
                     {% endfor %}
                 </tr>
-                {% for row in rows %}
+                {% for row in table_data.rows %}
                     <tr>
                         {% for cell in row %}
                             <td>{{ cell }}</td>
@@ -39,6 +39,4 @@
             <button type="submit" class="redirect-btn">Go to Modify</button>
         </form>
     </div>
-    
-    
 {% endblock %}
