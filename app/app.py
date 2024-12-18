@@ -27,7 +27,7 @@ def get_db_connection():
     )
 
 def is_valid_email(email):
-    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
     return re.match(email_regex, email) is not None
 
 def send_email(subject, body, receiver_emails):
@@ -101,6 +101,9 @@ def dashboard():
     if 'user_email' not in session:
         return redirect(url_for('login'))
 
+    admin_emails = os.environ.get('ADMIN_EMAILS', 'admin@example.com').split(',')
+    admin_emails = [email.strip() for email in admin_emails]  # Processed as a list in Python
+
     connection = get_db_connection()
     cursor = connection.cursor()
     cursor.execute("SHOW TABLES")
@@ -110,18 +113,70 @@ def dashboard():
         cursor.execute(f"SELECT * FROM {table_name}")
         data[table_name] = cursor.fetchall()
     connection.close()
-    return render_template('dashboard.html', tables=data)
+    return render_template('dashboard.html', tables=data, admin_emails=admin_emails)
+
+
+@app.route('/manage', methods=['GET', 'POST'])
+def manage():
+    if 'user_email' not in session:
+        return redirect(url_for('login'))
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    if request.method == 'POST':
+        action = request.form['action']
+        table_name = request.form['table_name']
+
+        if action == 'create':
+            query = f"""
+            CREATE TABLE {table_name} (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                name VARCHAR(255) NOT NULL,
+                exp_date DATE NOT NULL,
+                owner VARCHAR(255) NOT NULL,
+                watchers TEXT,
+                comment TEXT
+            )
+            """
+            cursor.execute(query)
+            connection.commit()
+        elif action == 'add_row':
+            name = request.form['name']
+            exp_date = request.form['exp_date']
+            owner = request.form['owner']
+            watchers = request.form['watchers']
+            comment = request.form['comment']
+
+            if not is_valid_email(owner):
+                connection.close()
+                return "Invalid owner email.", 400
+
+            query = f"""
+            INSERT INTO {table_name} (name, exp_date, owner, watchers, comment)
+            VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(query, (name, exp_date, owner, watchers, comment))
+            connection.commit()
+
+    connection.close()
+    return render_template('manage.html')
 
 @app.route('/modify', methods=['GET', 'POST'])
 def modify():
     if 'user_email' not in session:
         return redirect(url_for('login'))
 
-    user_email = session['user_email']  # Get authenticated user's email
+    # Fetch the admin list
+    admin_emails = os.environ.get('ADMIN_EMAILS', 'admin@example.com').split(',')
+    admin_emails = [email.strip() for email in admin_emails]
+
+    user_email = session['user_email']
     connection = get_db_connection()
     cursor = connection.cursor()
 
     if request.method == 'POST':
+        # Retrieve form data
         table_name = request.form.get('table_name')
         row_name = request.form.get('row_name')
 
@@ -129,7 +184,7 @@ def modify():
             connection.close()
             return "Table name and row name are required.", 400
 
-        # Check ownership
+        # Fetch the row to be modified
         query = f"SELECT * FROM {table_name} WHERE name = %s"
         cursor.execute(query, (row_name,))
         row = cursor.fetchone()
@@ -137,34 +192,74 @@ def modify():
             connection.close()
             return "Row not found.", 404
 
-        old_owner, old_watchers = row[4], row[5].split(", ") if row[5] else []
+        # Get existing data
+        old_owner, old_watchers, old_exp_date, old_comment = row[4], row[5], row[2], row[6]
+        old_watchers_list = old_watchers.split(", ") if old_watchers else []
 
-        cursor.execute(f"SHOW COLUMNS FROM {table_name}")
-        columns = [col[0] for col in cursor.fetchall()]
+        # Check permissions
+        if user_email not in admin_emails and user_email != old_owner:
+            connection.close()
+            return "You do not have permission to modify this row.", 403
 
+        # Columns to update
         updates = []
         params = []
         changes = []
 
-        for column in columns:
-            if column not in ('id', 'insert_date', 'dom', 'name'):
-                new_value = request.form.get(f'new_{column}')
-                if new_value and str(row[columns.index(column)]) != new_value:
-                    updates.append(f"{column} = %s")
-                    params.append(new_value)
-                    changes.append(f"  - {column}: '{row[columns.index(column)]}' -> '{new_value}'")
+        # Handle expiration date
+        new_exp_date = request.form.get('new_exp_date')
+        if new_exp_date and new_exp_date != str(old_exp_date):
+            updates.append("exp_date = %s")
+            params.append(new_exp_date)
+            changes.append(f"  - Expiration Date: '{old_exp_date}' -> '{new_exp_date}'")
 
+        # Handle comment
+        new_comment = request.form.get('new_comment')
+        if new_comment and new_comment != old_comment:
+            updates.append("comment = %s")
+            params.append(new_comment)
+            changes.append(f"  - Comment: '{old_comment}' -> '{new_comment}'")
+
+        # Handle owner
+        new_owner = request.form.get('new_owner')
+        if new_owner and new_owner != old_owner:
+            updates.append("owner = %s")
+            params.append(new_owner)
+            changes.append(f"  - Owner: '{old_owner}' -> '{new_owner}'")
+
+        # Handle watchers
+        new_watchers = request.form.get('new_watchers')
+        new_watchers_list = new_watchers.split(", ") if new_watchers else []
+        if new_watchers and new_watchers != old_watchers:
+            updates.append("watchers = %s")
+            params.append(new_watchers)
+            changes.append(f"  - Watchers: '{old_watchers}' -> '{new_watchers}'")
+
+        # Admin-only changes: Modify table name and row name
+        if user_email in admin_emails:
+            new_table_name = request.form.get('new_table_name')
+            new_row_name = request.form.get('new_row_name')
+
+            if new_table_name and new_table_name != table_name:
+                changes.append(f"  - Table Name: '{table_name}' -> '{new_table_name}'")
+                table_name = new_table_name
+
+            if new_row_name and new_row_name != row_name:
+                updates.append("name = %s")
+                params.append(new_row_name)
+                changes.append(f"  - Row Name: '{row_name}' -> '{new_row_name}'")
+                row_name = new_row_name
+
+        # Update the database
         if updates:
-            updates.append("dom = CURRENT_TIMESTAMP")
+            updates.append("dom = CURRENT_TIMESTAMP")  # Update the "date of modification"
             query = f"UPDATE {table_name} SET {', '.join(updates)} WHERE name = %s"
             params.append(row_name)
             cursor.execute(query, tuple(params))
             connection.commit()
 
-            new_owner = request.form.get('new_owner', old_owner)
-            new_watchers = request.form.get('new_watchers', ', '.join(old_watchers)).split(", ")
-
-            all_emails = set([old_owner] + old_watchers + [new_owner] + new_watchers)
+            # Notify old and new participants
+            all_emails = set([old_owner] + old_watchers_list + [new_owner] + new_watchers_list)
             send_email(
                 "Row Updated",
                 f"The row '{row_name}' in table '{table_name}' has been updated.\nChanges:\n" + "\n".join(changes),
@@ -174,6 +269,33 @@ def modify():
     connection.close()
     return render_template('modify.html', success=True)
 
+
+
+@app.route('/admin')
+def admin_panel():
+    # Get comma-separated list of admin emails from environment
+    admin_emails = os.environ.get('ADMIN_EMAILS', 'admin@example.com').split(',')
+
+    # Strip whitespace from each email
+    admin_emails = [email.strip() for email in admin_emails]
+
+    # Check if user is authenticated and is in the admin list
+    if 'user_email' not in session or session['user_email'] not in admin_emails:
+        return redirect(url_for('login'))
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute("SHOW TABLES")
+    tables = cursor.fetchall()
+    data = {}
+    for (table_name,) in tables:
+        cursor.execute(f"SELECT * FROM {table_name}")
+        rows = cursor.fetchall()
+        cursor.execute(f"SHOW COLUMNS FROM {table_name}")
+        columns = [col[0] for col in cursor.fetchall()]
+        data[table_name] = {"columns": columns, "rows": rows}
+    connection.close()
+    return render_template('admin.html', tables=data)
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
-

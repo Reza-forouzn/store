@@ -1,46 +1,43 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Modify Database</title>
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-    <h1>Modify Data</h1>
+{% extends "base.html" %}
+
+{% block title %}Modify Data{% endblock %}
+
+{% block heading %}Modify Data{% endblock %}
+
+{% block content %}
     <form method="POST">
         <label for="table_name">Table Name:</label>
-        <input type="text" id="table_name" name="table_name" class="form-input" required>
+        <input type="text" id="table_name" name="table_name" required>
         <br>
         <label for="row_name">Row Name:</label>
-        <input type="text" id="row_name" name="row_name" class="form-input" required>
+        <input type="text" id="row_name" name="row_name" required>
         <br>
-        <div id="editable-fields">
-            <!-- Editable fields dynamically rendered -->
-        </div>
+        <label for="new_exp_date">New Expiration Date:</label>
+        <input type="date" id="new_exp_date" name="new_exp_date">
+        <br>
+        <label for="new_comment">New Comment:</label>
+        <input type="text" id="new_comment" name="new_comment">
+        <br>
+        <label for="new_owner">New Owner Email:</label>
+        <input type="email" id="new_owner" name="new_owner">
+        <br>
+        <label for="new_watchers">New Watchers (comma-separated):</label>
+        <input type="text" id="new_watchers" name="new_watchers">
+        <br>
+        <!-- Admin-Only Fields -->
+        {% if session['user_email'] in admin_emails %}
+            <label for="new_table_name">New Table Name:</label>
+            <input type="text" id="new_table_name" name="new_table_name">
+            <br>
+            <label for="new_row_name">New Row Name:</label>
+            <input type="text" id="new_row_name" name="new_row_name">
+            <br>
+        {% endif %}
         <button type="submit" class="action-btn">Update</button>
     </form>
-
-    <!-- Back to Dashboard Button -->
     <div class="redirect-buttons">
         <form action="/" method="GET">
             <button type="submit" class="redirect-btn">Back to Dashboard</button>
         </form>
     </div>
-</body>
-<script>
-    const tableSchema = ["owner", "watchers", "exp_date", "comment"]; // Define editable fields
-    const fieldContainer = document.getElementById('editable-fields');
-
-    tableSchema.forEach(field => {
-        const label = document.createElement('label');
-        label.textContent = `New ${field.charAt(0).toUpperCase() + field.slice(1)}:`;
-        const input = document.createElement('input');
-        input.type = field === 'exp_date' ? 'date' : 'text';
-        input.name = `new_${field}`;
-        input.className = 'form-input'; // Apply consistent styling
-        label.htmlFor = `new_${field}`;
-        fieldContainer.appendChild(label);
-        fieldContainer.appendChild(input);
-        fieldContainer.appendChild(document.createElement('br'));
-    });
-</script>
-</html>
+{% endblock %}

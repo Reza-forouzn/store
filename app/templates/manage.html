@@ -1,11 +1,10 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Manage Database</title>
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-    <h1>Manage Database</h1>
+{% extends "base.html" %}
+
+{% block title %}Manage Database{% endblock %}
+
+{% block heading %}Manage Database{% endblock %}
+
+{% block content %}
     <form method="POST">
         <label for="table_name">Table Name:</label>
         <input type="text" id="table_name" name="table_name" class="form-input" required>
@@ -30,12 +29,9 @@
             <button name="action" value="add_row" class="action-btn">Add Row</button>
         </div>
     </form>
-
-    <!-- Back to Dashboard Button -->
     <div class="redirect-buttons">
         <form action="/" method="GET">
             <button type="submit" class="redirect-btn">Back to Dashboard</button>
         </form>
     </div>
-</body>
-</html>
+{% endblock %}

@@ -1,11 +1,10 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-    <h1>Database Dashboard</h1>
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block heading %}Database Dashboard{% endblock %}
+
+{% block content %}
     {% if tables %}
         {% for table_name, rows in tables.items() %}
             <h2>Table: {{ table_name }}</h2>
@@ -27,12 +26,19 @@
     {% else %}
         <p>No data available.</p>
     {% endif %}
-    
-    <!-- Redirect Button -->
     <div class="redirect-buttons">
+        {% if session['user_email'] in admin_emails %}
+            <form action="/admin" method="GET">
+                <button type="submit" class="redirect-btn">Go to Admin Panel</button>
+            </form>
+        {% endif %}
+        <form action="/manage" method="GET">
+            <button type="submit" class="redirect-btn">Go to Manage</button>
+        </form>
         <form action="/modify" method="GET">
-            <button type="submit" class="redirect-btn">Go to Modify Page</button>
+            <button type="submit" class="redirect-btn">Go to Modify</button>
         </form>
     </div>
-</body>
-</html>
+    
+    
+{% endblock %}
