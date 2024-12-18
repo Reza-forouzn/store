@@ -7,17 +7,43 @@ h1 {
     color: #333;
 }
 
+form {
+    max-width: 300px;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    margin-bottom: 5px;
+}
+
+input {
+    margin-bottom: 15px;
+    padding: 8px;
+    font-size: 14px;
+}
+
+button {
+    padding: 10px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
 }
 
-table, th, td {
-    border: 1px solid #ccc;
-}
-
 th, td {
+    border: 1px solid #ccc;
     padding: 10px;
     text-align: left;
 }
