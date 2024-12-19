@@ -134,10 +134,13 @@ def manage():
     if 'user_email' not in session:
         return redirect(url_for('login'))
 
+    # Fetch the admin list
     admin_emails = os.environ.get('ADMIN_EMAILS', 'admin@example.com').split(',')
-    admin_emails = [email.strip() for email in admin_emails]
-    user_email = session['user_email']
+    admin_emails = [email.strip().lower() for email in admin_emails]  # Normalize for case-insensitive matching
 
+    user_email = session['user_email'].strip().lower()  # Normalize user's email for case-insensitive matching
+
+    # Check if the logged-in user is an admin
     if user_email not in admin_emails:
         return "You do not have permission to access this page.", 403
 
@@ -149,6 +152,7 @@ def manage():
         table_name = request.form['table_name']
 
         if action == 'create':
+            # Create a new table
             query = f"""
             CREATE TABLE {table_name} (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -164,6 +168,7 @@ def manage():
             cursor.execute(query)
             connection.commit()
         elif action == 'add_row':
+            # Add a row to an existing table
             name = request.form['name']
             exp_date = request.form['exp_date']
             owner = request.form['owner']
@@ -183,6 +188,7 @@ def manage():
 
     connection.close()
     return render_template('manage.html')
+
 
 @app.route('/modify', methods=['GET', 'POST'])
 def modify():
