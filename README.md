@@ -28,7 +28,7 @@ This project is a web-based database management system that integrates with an L
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/Reza-forouzn/store.git
-cd database-management-system
+cd store
 ```
 
 ### 2. Install Dependencies
