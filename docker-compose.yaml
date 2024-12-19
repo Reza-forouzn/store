@@ -27,6 +27,13 @@ services:
       SMTP_EMAIL: "your-email@example.com"
       SMTP_PASSWORD: "your-email-password"
 
+
+      # Admin Configuration
+      ADMIN_EMAILS: "your-email@example.com"
+
+      # Domain
+      DOMAIN: "example.com"
+      
     env_file:
       - .env
     volumes:
