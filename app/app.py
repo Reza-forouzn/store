@@ -121,7 +121,7 @@ def dashboard():
         data[table_name] = {"columns": columns, "rows": rows}
 
     connection.close()
-    return render_template('dashboard.html', tables=data)
+    return render_template('dashboard.html', tables=data, admin_emails=admin_emails)
 
 @app.route('/manage', methods=['GET', 'POST'])
 def manage():
