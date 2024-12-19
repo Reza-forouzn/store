@@ -61,7 +61,6 @@ def login():
         server = Server(LDAP_SERVER, get_info=ALL)
 
         try:
-            # Step 1: Anonymous bind to search for user DN
             conn = Connection(server)
             if not conn.bind():
                 return render_template('login.html', error="Anonymous bind failed."), 500
@@ -73,7 +72,6 @@ def login():
             if not conn.entries:
                 return render_template('login.html', error="User not found."), 404
 
-            # Fetch email and DN
             user_entry = conn.entries[0]
             user_dn = str(user_entry.entry_dn)
             user_email = str(user_entry.mail) if hasattr(user_entry, "mail") else None
@@ -83,7 +81,6 @@ def login():
 
             conn.unbind()
 
-            # Step 2: Bind with user's DN and password
             user_conn = Connection(server, user=user_dn, password=password)
             if user_conn.bind():
                 session['user_email'] = user_email
@@ -115,32 +112,26 @@ def dashboard():
 
     data = {}
     for (table_name,) in tables:
-        # Fetch column names
         cursor.execute(f"SHOW COLUMNS FROM {table_name}")
         columns = [col[0] for col in cursor.fetchall()]
 
-        # Fetch table rows
         cursor.execute(f"SELECT * FROM {table_name}")
         rows = cursor.fetchall()
 
-        # Store both column names and rows
         data[table_name] = {"columns": columns, "rows": rows}
 
     connection.close()
-    return render_template('dashboard.html', tables=data, admin_emails=admin_emails)
+    return render_template('dashboard.html', tables=data)
 
 @app.route('/manage', methods=['GET', 'POST'])
 def manage():
     if 'user_email' not in session:
         return redirect(url_for('login'))
 
-    # Fetch the admin list
     admin_emails = os.environ.get('ADMIN_EMAILS', 'admin@example.com').split(',')
-    admin_emails = [email.strip().lower() for email in admin_emails]  # Normalize for case-insensitive matching
+    admin_emails = [email.strip().lower() for email in admin_emails]
+    user_email = session['user_email'].strip().lower()
 
-    user_email = session['user_email'].strip().lower()  # Normalize user's email for case-insensitive matching
-
-    # Check if the logged-in user is an admin
     if user_email not in admin_emails:
         return "You do not have permission to access this page.", 403
 
@@ -152,13 +143,12 @@ def manage():
         table_name = request.form['table_name']
 
         if action == 'create':
-            # Create a new table
             query = f"""
             CREATE TABLE {table_name} (
                 id INT PRIMARY KEY AUTO_INCREMENT,
                 name VARCHAR(255) NOT NULL,
-                insert_date DATE,
-                dom DATE,
+                insert_date DATE DEFAULT CURRENT_DATE,
+                dom DATE DEFAULT CURRENT_DATE,
                 exp_date DATE NOT NULL,
                 owner TEXT NOT NULL,
                 watchers TEXT,
@@ -167,8 +157,12 @@ def manage():
             """
             cursor.execute(query)
             connection.commit()
+            send_email(
+                "New Table Created",
+                f"Table '{table_name}' has been created by {user_email}.",
+                admin_emails
+            )
         elif action == 'add_row':
-            # Add a row to an existing table
             name = request.form['name']
             exp_date = request.form['exp_date']
             owner = request.form['owner']
@@ -180,15 +174,21 @@ def manage():
                 return "Invalid owner email.", 400
 
             query = f"""
-            INSERT INTO {table_name} (name, exp_date, owner, watchers, comment)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO {table_name} (name, insert_date, exp_date, owner, watchers, comment)
+            VALUES (%s, CURRENT_DATE, %s, %s, %s, %s)
             """
             cursor.execute(query, (name, exp_date, owner, watchers, comment))
             connection.commit()
 
+            all_emails = set([owner] + watchers.split(", ") + admin_emails)
+            send_email(
+                "New Row Added",
+                f"Row '{name}' has been added to table '{table_name}'.",
+                all_emails
+            )
+
     connection.close()
     return render_template('manage.html')
-
 
 @app.route('/modify', methods=['GET', 'POST'])
 def modify():
@@ -219,11 +219,9 @@ def modify():
             connection.close()
             return "Row not found.", 404
 
-        print(f"DEBUG: Row fetched: {row}")
-
         old_owner = row[5]
         old_watchers = row[6] if row[6] else ''
-        old_watchers_list = old_watchers.split(", ") if isinstance(old_watchers, str) else []
+        old_watchers_list = old_watchers.split(", ")
 
         old_exp_date = str(row[4])
         old_comment = row[7]
@@ -269,7 +267,7 @@ def modify():
             cursor.execute(query, tuple(params))
             connection.commit()
 
-            all_emails = set([old_owner] + old_watchers_list + [new_owner] + new_watchers.split(", "))
+            all_emails = set([old_owner] + old_watchers_list + [new_owner] + new_watchers.split(", ") + admin_emails)
             send_email(
                 "Row Updated",
                 f"The row '{row_name}' in table '{table_name}' has been updated.\nChanges:\n" + "\n".join(changes),
