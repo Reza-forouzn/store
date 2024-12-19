@@ -1,5 +1,3 @@
-Here’s a simple `README.md` file for your project:
-
 ```markdown
 # Database Management System with LDAP Authentication
 
