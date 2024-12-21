@@ -187,8 +187,7 @@ def manage():
                 all_emails
             )
         elif action == 'delete_table':
-            query = f"DROP TABLE IF EXISTS {table_name}"
-            cursor.execute(query)
+            cursor.execute(f"DROP TABLE {table_name}")
             connection.commit()
 
             send_email(
@@ -197,14 +196,13 @@ def manage():
                 admin_emails
             )
         elif action == 'delete_row':
-            row_id = request.form['row_id']
-            query = f"DELETE FROM {table_name} WHERE id = %s"
-            cursor.execute(query, (row_id,))
+            row_name = request.form.get('row_name')
+            cursor.execute(f"DELETE FROM {table_name} WHERE name = %s", (row_name,))
             connection.commit()
 
             send_email(
                 "Row Deleted",
-                f"Row with ID '{row_id}' has been deleted from table '{table_name}' by {user_email}.",
+                f"Row '{row_name}' has been deleted from table '{table_name}' by {user_email}.",
                 admin_emails
             )
 
