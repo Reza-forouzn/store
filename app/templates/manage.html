@@ -29,6 +29,28 @@
             <button name="action" value="add_row" class="action-btn">Add Row</button>
         </div>
     </form>
+
+    <form method="POST">
+        <label for="table_name_delete">Table Name to Delete:</label>
+        <input type="text" id="table_name_delete" name="table_name" class="form-input" required>
+        <br>
+        <div class="button-container">
+            <button name="action" value="delete_table" class="delete-btn">Delete Table</button>
+        </div>
+    </form>
+
+    <form method="POST">
+        <label for="table_name_row_delete">Table Name:</label>
+        <input type="text" id="table_name_row_delete" name="table_name" class="form-input" required>
+        <br>
+        <label for="row_id">Row ID to Delete:</label>
+        <input type="number" id="row_id" name="row_id" class="form-input" required>
+        <br>
+        <div class="button-container">
+            <button name="action" value="delete_row" class="delete-btn">Delete Row</button>
+        </div>
+    </form>
+
     <div class="redirect-buttons">
         <form action="/" method="GET">
             <button type="submit" class="redirect-btn">Back to Dashboard</button>

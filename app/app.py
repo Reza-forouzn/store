@@ -186,9 +186,31 @@ def manage():
                 f"Row '{name}' has been added to table '{table_name}'.",
                 all_emails
             )
+        elif action == 'delete_table':
+            query = f"DROP TABLE IF EXISTS {table_name}"
+            cursor.execute(query)
+            connection.commit()
+
+            send_email(
+                "Table Deleted",
+                f"Table '{table_name}' has been deleted by {user_email}.",
+                admin_emails
+            )
+        elif action == 'delete_row':
+            row_id = request.form['row_id']
+            query = f"DELETE FROM {table_name} WHERE id = %s"
+            cursor.execute(query, (row_id,))
+            connection.commit()
+
+            send_email(
+                "Row Deleted",
+                f"Row with ID '{row_id}' has been deleted from table '{table_name}' by {user_email}.",
+                admin_emails
+            )
 
     connection.close()
     return render_template('manage.html')
+
 
 @app.route('/modify', methods=['GET', 'POST'])
 def modify():
