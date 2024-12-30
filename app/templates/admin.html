@@ -9,11 +9,11 @@
         <h2>Table: {{ table_name }}</h2>
         <table border="1">
             <tr>
-                {% for column in table_data['columns'] %}
-                    <th>{{ column }}</th>
+                {% for column in table_data.columns %}
+                    <th>{{ column if column != 'dom' else 'modification_date' }}</th>
                 {% endfor %}
             </tr>
-            {% for row in table_data['rows'] %}
+            {% for row in table_data.rows %}
                 <tr>
                     {% for cell in row %}
                         <td>{{ cell }}</td>

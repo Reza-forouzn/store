@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import mysql.connector
 import re
 from datetime import datetime
@@ -105,12 +105,14 @@ def dashboard():
     admin_emails = os.environ.get('ADMIN_EMAILS', 'admin@example.com').split(',')
     admin_emails = [email.strip() for email in admin_emails]
 
+    user_email = session['user_email']
     connection = get_db_connection()
     cursor = connection.cursor()
     cursor.execute("SHOW TABLES")
     tables = cursor.fetchall()
 
     data = {}
+    row_counter = 0
     for (table_name,) in tables:
         cursor.execute(f"SHOW COLUMNS FROM {table_name}")
         columns = [col[0] for col in cursor.fetchall()]
@@ -118,10 +120,18 @@ def dashboard():
         cursor.execute(f"SELECT * FROM {table_name}")
         rows = cursor.fetchall()
 
-        data[table_name] = {"columns": columns, "rows": rows}
+        visible_rows = []
+        for row in rows:
+            owner, watchers = row[5], row[6]
+            if user_email in (owner or '') or user_email in (watchers or '') or user_email in admin_emails:
+                row_counter += 1
+                visible_rows.append((row_counter,) + row[1:])  # Add row counter and exclude id
+
+        if visible_rows:
+            data[table_name] = {"columns": ['No'] + columns[1:], "rows": visible_rows}
 
     connection.close()
-    return render_template('dashboard.html', tables=data, admin_emails=admin_emails)
+    return render_template('dashboard.html', tables=data)
 
 @app.route('/manage', methods=['GET', 'POST'])
 def manage():
@@ -189,26 +199,23 @@ def manage():
         elif action == 'delete_table':
             cursor.execute(f"DROP TABLE {table_name}")
             connection.commit()
-
             send_email(
                 "Table Deleted",
                 f"Table '{table_name}' has been deleted by {user_email}.",
                 admin_emails
             )
         elif action == 'delete_row':
-            row_name = request.form.get('row_name')
+            row_name = request.form['row_name']
             cursor.execute(f"DELETE FROM {table_name} WHERE name = %s", (row_name,))
             connection.commit()
-
             send_email(
                 "Row Deleted",
-                f"Row '{row_name}' has been deleted from table '{table_name}' by {user_email}.",
+                f"Row '{row_name}' in table '{table_name}' has been deleted by {user_email}.",
                 admin_emails
             )
 
     connection.close()
     return render_template('manage.html')
-
 
 @app.route('/modify', methods=['GET', 'POST'])
 def modify():
