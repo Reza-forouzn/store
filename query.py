@@ -82,10 +82,10 @@ try:
                 receiver_email = list(set(receiver_email))
 
                 # Determine email subject and body based on remaining days
-                if remaining_days > 30:
-                    subject = f"Expiration Notification for {name}"
-                    body = f"The item '{name}' in table '{table_name}' has an expiration date of {exp_date_value} ({remaining_days} days remaining)."
-                elif 30 >= remaining_days > 15:
+                # if remaining_days < 30:
+                #     subject = f"Expiration Notification for {name}"
+                #     body = f"The item '{name}' in table '{table_name}' has an expiration date of {exp_date_value} ({remaining_days} days remaining)."
+                if 30 >= remaining_days > 15:
                     subject = f"Upcoming Expiration Alert for {name}"
                     body = f"The item '{name}' in table '{table_name}' is set to expire on {exp_date_value} ({remaining_days} days remaining)."
                 elif 15 >= remaining_days > 10:
